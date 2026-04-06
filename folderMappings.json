@@ -1,0 +1,92 @@
+[
+    {
+        "type": "Default",
+        "folder": "",
+        "searchParentFolders": false,
+        "context": "SCRIPTED_DECISION_NODE"
+    },
+    {
+        "type": "Scripted Decision Node",
+        "folder": "ScriptedDecision",
+        "searchParentFolders": true,
+        "context": "SCRIPTED_DECISION_NODE"
+    },
+    {
+        "type": "Library",
+        "folder": "Libraries",
+        "searchParentFolders": true,
+        "context": "LIBRARY"
+    },
+    {
+        "type": "Config Provider Node",
+        "folder": "ConfigProvider",
+        "searchParentFolders": true,
+        "context": "CONFIG_PROVIDER_NODE"
+    },
+    {
+        "type": "Policy Condition",
+        "folder": "PolicyCondition",
+        "searchParentFolders": true,
+        "context": "POLICY_CONDITION"
+    },
+    {
+        "type": "OIDC Claims",
+        "folder": "OIDCClaims",
+        "searchParentFolders": true,
+        "context": "OIDC_CLAIMS"
+    },
+    {
+        "type": "OAuth2 Access Token Modification",
+        "folder": "AccessTokenModification",
+        "searchParentFolders": true,
+        "context": "OAUTH2_ACCESS_TOKEN_MODIFICATION"
+    },
+    {
+        "type": "OAuth2 Authorize Endpoint Provider",
+        "folder": "AuthorizeEndpointProvider",
+        "searchParentFolders": true,
+        "context": "OAUTH2_AUTHORIZE_ENDPOINT_DATA_PROVIDER"
+    },
+    {
+        "type": "OAuth2 Evaluate Scope",
+        "folder": "EvaluateScope",
+        "searchParentFolders": true,
+        "context": "OAUTH2_EVALUATE_SCOPE"
+    },
+    {
+        "type": "OAuth2 May Act",
+        "folder": "MayAct",
+        "searchParentFolders": true,
+        "context": "OAUTH2_MAY_ACT"
+    },
+    {
+        "type": "OAuth2 Validate Scope",
+        "folder": "ValidateScope",
+        "searchParentFolders": true,
+        "context": "OAUTH2_VALIDATE_SCOPE"
+    },
+    {
+        "type": "SAML2 IDP Adapter",
+        "folder": "IDPAdapter",
+        "searchParentFolders": true,
+        "context": "SAML2_IDP_ADAPTER"
+    },
+    {
+        "type": "SAML2 IDP Attribute Mapper",
+        "folder": "IDPAttributeMapper",
+        "searchParentFolders": true,
+        "context": "SAML2_IDP_ATTRIBUTE_MAPPER"
+    },
+    {
+        "type": "SAML2 NameID Mapper",
+        "folder": "NameIDMapper",
+        "searchParentFolders": true,
+        "context": "SAML2_NAMEID_MAPPER"
+    },
+    {
+        "type": "SAML2 SP Adapter",
+        "folder": "SPAdapter",
+        "searchParentFolders": true,
+        "context": "SAML2_SP_ADAPTER"
+    }
+]

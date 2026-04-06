@@ -1,0 +1,245 @@
+#!/usr/bin/env node
+/**
+* Name: scriptUploadToAIC
+* Version: 2026-04-30
+* Author: Matt Key, @mattkey-ping
+*
+* Disclaimer:
+* The sample code described herein is provided on an "as is" basis, without warranty of any kind, to the fullest extent permitted by law. The Author(s) nor Ping Identity does not warrant or guarantee the individual success developers may have in implementing the sample code on their development platforms or in production configurations.
+* The Author(s) and Ping Identity does not warrant, guarantee or make any representations regarding the use, results of use, accuracy, timeliness or completeness of any data or information relating to the sample code. The Author(s) and Ping Identity disclaims all warranties, expressed or implied, and in particular, disclaims all warranties of merchantability, and warranties related to the code, or any service or software related thereto.
+* The Author(s) and Ping Identity shall not be liable for any direct, indirect or consequential damages or costs of any type arising out of any action taken by you or others related to the sample code.
+* This sample code is not covered by any Ping Identity Service Level Agreements.
+* 
+* Description:
+*   Upload new and modified scripts to AIC tenant. 
+*   Supports uploading scripts of various types (see folderMappings.json for supported types)
+*
+* Required Prerequisites:
+*   Frodo CLI installed (https://github.com/rockcarver/frodo-cli) and in $PATH 
+*   chmod 775 scriptUploadToAIC
+* 
+* Optional Prerequisites:
+*   folderMappings.json file in same directory as this script.
+*      IF no folderMapping.json file, script will be imported as type SCRIPTED_DECISION_NODE 
+*      ELSE script should be placed in a subfolder matching "folder": "<name>", e.g.
+*          /scripts/Libraries/examples/myLibScript.js will be imported as a LIBRARY script
+*          IF no folder name matching to folderMappings.json, script will be imported as type matching "default"
+*   $WORKING_TENANT environment variable matching frodo connection alias, e.g.
+*      export WORKING_TENANT=myTenant
+*
+* Usage:
+*   ./scriptUploadToAIC <scriptFile>
+*      scriptFile - relative file path to the script to be imported, e.g.
+*         ./scriptUploadToAIC ./code/ScriptedDecision/exampleScript.js
+*         NOTE: name of scriptFile limited to 25 chars as of frodo 4.0.0-2
+*/
+
+//// GLOBALS
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+const readline = require('readline');
+const crypto = require('crypto');
+
+const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
+const PIPE_REGEX = /[│|]/;
+const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+//// HELPERS
+function fail(message) {
+    console.error(message);
+    process.exit(1);
+}
+
+function runFrodo(args) {
+    return spawnSync('frodo', args, {
+        stdio: 'inherit',
+        shell: false,
+    });
+}
+
+function generateUuid() {
+    return crypto.randomUUID();
+}
+
+function userInput(message) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+
+    return new Promise((resolve) => {
+        rl.question(`${message} `, (answer) => {
+            rl.close();
+            resolve(answer.trim());
+        });
+    });
+}
+
+//// MAIN
+(async function main() {
+    //TODO: script type as argv[3]
+    const scriptFile = process.argv[2];
+    if (!scriptFile) {
+        fail('Error: Missing script file path argument.');
+    }
+    let tenant = process.env.WORKING_TENANT;
+    if (!tenant) {
+        const userInputValue = await userInput(
+            `WORKING_TENANT environment variable is not set. Enter unique frodo connection alias:`
+        );
+        if (!userInputValue) {
+            fail('Error: WORKING_TENANT environment variable is not set.');
+        }
+        else {
+            tenant = userInputValue;
+        }
+    }
+    const scriptFileFullPath = fs.realpathSync.native(path.resolve(scriptFile));
+    const { dir: scriptDir, name: scriptName } = path.parse(scriptFileFullPath);
+    const jsonFilePath = path.join(scriptDir, `${scriptName}.tmp`);
+    const mappingsFilePath = path.join(__dirname, 'folderMappings.json');
+    if (!fs.existsSync(mappingsFilePath)) {
+        fail(`Error: Configuration file does not exist: ${mappingsFilePath}`);
+    }
+    let folderMappings;
+    try {
+        folderMappings = JSON.parse(fs.readFileSync(mappingsFilePath, 'utf8'));
+    } catch (error) {
+        fail(`Error: Failed to parse configuration file: ${error.message}`);
+    }
+
+    // Type of script determined by a parent folder name matching in folderMappings.json
+    let contextValue = null;
+    let currentDir = path.resolve(scriptDir);
+    const searchable = new Map(
+        folderMappings
+            .filter(m => m.searchParentFolders)
+            .map(m => [m.folder, m.context])
+    );
+
+    while (true) {
+        const folderName = path.basename(currentDir);
+        if (searchable.has(folderName)) {
+            contextValue = searchable.get(folderName);
+            break;
+        }
+        const parentDir = path.dirname(currentDir);
+        if (parentDir === currentDir) break;
+        currentDir = parentDir;
+    }
+
+    if (!contextValue) {
+        const defaultMapping = folderMappings.find(m => m.type === 'Default');
+        contextValue = defaultMapping ? defaultMapping.context : 'SCRIPTED_DECISION_NODE';
+    }
+
+    // IF frodo formatted JSON file does not exist
+    let jsonCreatedThisRun = false;
+    if (!fs.existsSync(jsonFilePath)) {
+        if (!fs.existsSync(scriptFileFullPath)) {
+            fail(`Error: Script file does not exist: ${scriptFileFullPath}`);
+        }
+        // See if script already exists in tenant
+        const listResult = spawnSync(
+            'frodo',
+            ['script', 'list', '-l', tenant],
+            { encoding: 'utf8' }
+        );
+        if (listResult.error) {
+            fail(`Error executing frodo: ${listResult.error.message}`);
+        }
+        if (listResult.status !== 0) {
+            process.stderr.write(listResult.stderr || '');
+            fail('Error: frodo script list failed.');
+        }
+        const outputLines = (listResult.stdout || '')
+            .replace(ANSI_REGEX, '')
+            .split(/\r?\n/);
+        const matches = outputLines.filter((line) => {
+            const match = line.match(PIPE_REGEX);
+            if (!match) return false;
+            const nameCol = line.slice(0, match.index).trim();
+            return nameCol === scriptName;
+        });
+
+        let id;
+        let description;
+        // IF script does not exist, prompt to create
+        if (matches.length === 0) {
+            const userInputValue = await userInput(
+                `${scriptName} does not exist in ${tenant}. Would you like to create it? y/n`
+            );
+            if (userInputValue !== 'y') {
+                fail('Aborted by user.');
+            }
+            id = generateUuid();
+            description = '';
+
+        } else if (matches.length === 1) {
+            // ELSE IF exists, get script information from frodo
+            // Note: frodo script list -l will truncant script names over 30 chars (as of 4.0.0-2)
+            let remaining = matches[0];
+            const parts = [];
+            for (let i = 0; i < 4; i++) {
+                const match = remaining.match(PIPE_REGEX);
+                if (!match) {
+                    fail('Error: Malformed frodo output; insufficient columns.');
+                }
+                parts.push(remaining.slice(0, match.index).trim());
+                remaining = remaining.slice(match.index + 1);
+            }
+            id = parts[1];
+            description = remaining.trim();
+            if (!GUID_REGEX.test(id)) {
+                fail(`Error: Parsed script ID is not a valid GUID: ${id}`);
+            }
+        } else {
+            fail(
+                `Error: Expected exactly one exact match for script name "${scriptName}", found ${matches.length}.`
+            );
+        }
+
+        // Create JSON file for frodo script import
+        const source = fs.readFileSync(scriptFileFullPath, 'utf8');
+        const lines = source.split(/\r?\n/);
+        if (fs.existsSync(jsonFilePath)) {
+            fail(
+                `Error: ${jsonFilePath} appeared during execution; refusing to overwrite.`
+            );
+        }
+        const jsonObject = {
+            script: {
+                [id]: {
+                    context: contextValue,
+                    default: false,
+                    language: 'JAVASCRIPT',
+                    description,
+                    name: scriptName,
+                    script: lines,
+                },
+            },
+        };
+        fs.writeFileSync(
+            jsonFilePath,
+            JSON.stringify(jsonObject, null, 2),
+            'utf8'
+        );
+        jsonCreatedThisRun = true;
+    }
+
+    // Import script using frodo script import
+    const importArgs = ['script', 'import', '-f', jsonFilePath, '-m', 'cloud', tenant];
+    const importResult = runFrodo(importArgs);
+    if (importResult.status === 0) {
+        if (jsonCreatedThisRun) {
+            try {
+                fs.unlinkSync(jsonFilePath);
+            } catch { }
+        }
+        process.exit(0);
+    } else {
+        process.exit(importResult.status || 1);
+    }
+})();
