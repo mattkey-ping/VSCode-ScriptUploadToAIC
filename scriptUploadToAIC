@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
-* Name: scriptUploadToAIC
-* Version: 2026-04-30
+* Name: scriptImportToAIC
+* Version: 2026-04-06
 * Author: Matt Key, @mattkey-ping
 *
 * Disclaimer:
@@ -16,7 +16,7 @@
 *
 * Required Prerequisites:
 *   Frodo CLI installed (https://github.com/rockcarver/frodo-cli) and in $PATH 
-*   chmod 775 scriptUploadToAIC
+*   chmod 775 scriptImportToAIC
 * 
 * Optional Prerequisites:
 *   folderMappings.json file in same directory as this script.
@@ -24,13 +24,14 @@
 *      ELSE script should be placed in a subfolder matching "folder": "<name>", e.g.
 *          /scripts/Libraries/examples/myLibScript.js will be imported as a LIBRARY script
 *          IF no folder name matching to folderMappings.json, script will be imported as type matching "default"
-*   $WORKING_TENANT environment variable matching frodo connection alias, e.g.
-*      export WORKING_TENANT=myTenant
+*   workingTenant.env containing string matching frodo connection alias, e.g.
+*      cat workingTenant.env
+*      mytenant
 *
 * Usage:
-*   ./scriptUploadToAIC <scriptFile>
+*   ./scriptImportToAIC <scriptFile>
 *      scriptFile - relative file path to the script to be imported, e.g.
-*         ./scriptUploadToAIC ./code/ScriptedDecision/exampleScript.js
+*         ./scriptImportToAIC ./code/ScriptedDecision/exampleScript.js
 *         NOTE: name of scriptFile limited to 25 chars as of frodo 4.0.0-2
 */
 
@@ -84,18 +85,6 @@ function userInput(message) {
     if (!scriptFile) {
         fail('Error: Missing script file path argument.');
     }
-    let tenant = process.env.WORKING_TENANT;
-    if (!tenant) {
-        const userInputValue = await userInput(
-            `WORKING_TENANT environment variable is not set. Enter unique frodo connection alias:`
-        );
-        if (!userInputValue) {
-            fail('Error: WORKING_TENANT environment variable is not set.');
-        }
-        else {
-            tenant = userInputValue;
-        }
-    }
     const scriptFileFullPath = fs.realpathSync.native(path.resolve(scriptFile));
     const { dir: scriptDir, name: scriptName } = path.parse(scriptFileFullPath);
     const jsonFilePath = path.join(scriptDir, `${scriptName}.tmp`);
@@ -109,6 +98,25 @@ function userInput(message) {
     } catch (error) {
         fail(`Error: Failed to parse configuration file: ${error.message}`);
     }
+    const workingTenantFilePath = path.join(__dirname, 'workingTenant.env');
+    let tenant;
+    if (fs.existsSync(workingTenantFilePath)) {
+        const fileContents = fs.readFileSync(workingTenantFilePath, 'utf8').trim();
+        if (/\s/.test(fileContents)) {
+            fail(`Error: ${workingTenantFilePath} contains more than one word.`);
+        }
+        tenant = fileContents;
+    }
+    if (!tenant) {
+        const userInputValue = await userInput(
+            `WORKING_TENANT environment variable is not set. Enter unique frodo connection alias:`
+        );
+        if (!userInputValue) {
+            fail('Error: WORKING_TENANT environment variable is not set.');
+        }
+        tenant = userInputValue;
+    }
+    console.log(`*** Uploading to ${tenant} script: ${scriptName} ***`);
 
     // Type of script determined by a parent folder name matching in folderMappings.json
     let contextValue = null;

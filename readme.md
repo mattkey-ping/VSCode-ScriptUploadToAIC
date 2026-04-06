@@ -2,27 +2,14 @@
 
 ## Prerequisites
 
-1. Install [Frodo CLI](https://github.com/rockcarver/frodo-cli) and ensure it is in your `$PATH`.
+Install [Frodo CLI](https://github.com/rockcarver/frodo-cli) and ensure it is in your `$PATH`.
 
 ## Configure VS Code
 
 1. Create a `.vscode` folder in the root of your VS Code workspace.
 2. Copy the contents of `VSCode-ScriptUploadToAIC` into the `.vscode` folder.
-3. Change permissions on the install script and then execute from the command line
-
-     ```sh
-     chmod 775 installBinding.sh
-      ```
-
-4. (Optional) Move the Scripts folder to a preferred location.
-
-5. (Optional) Set the `$WORKING_TENANT` environment variable in your shell profile to reduce prompting for a specific Frodo connection alias (do not set if you want to switch between tenants often). For zsh, add to `~/.zprofile`:
-
-   ```sh
-   export WORKING_TENANT=myTenant
-   ```
-
-   > **Note:** VS Code must be restarted after modifying this variable.
+3. (Optional) Move the Scripts folder to a preferred location.
+4. (Optional) Set the tenant name in workingTenant.env to reduce prompting for a specific Frodo connection alias (leave blank if you want to enter the tenant name on each upload).
 
 ## Usage
 
