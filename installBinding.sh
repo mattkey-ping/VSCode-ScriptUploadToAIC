@@ -91,7 +91,7 @@ grep -v "^//" "$MAPPINGSFILE" | jq -c '.[]' | while read -r property; do
         fi
         folder=Scripts/"$folder"
         if [[ ! -d "$folder" ]]; then
-            mkdir -p "$folder"
+            mkdir -p "../$folder"
             echo "Directory Created: $folder"
         else
             echo "Directory Exists: $folder"
