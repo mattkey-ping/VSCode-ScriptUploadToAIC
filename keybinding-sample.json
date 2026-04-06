@@ -1,8 +1,0 @@
-[
-    {
-        "key": "cmd+u",
-        "command": "workbench.action.tasks.runTask",
-        "args": "Upload script to AIC",
-        "when": "editorTextFocus"
-    }
-]

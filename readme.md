@@ -8,34 +8,15 @@
 
 1. Create a `.vscode` folder in the root of your VS Code workspace.
 2. Copy the contents of `VSCode-ScriptUploadToAIC` into the `.vscode` folder.
-3. Symlink `keybindings.json` from `.vscode` to VS Code's built-in keybindings file (run from within `.vscode`):
-
-   ```sh
-   ln -s ~"/Library/Application Support/Code/User/keybindings.json" ./keybindings.json
-   ```
-
-4. Update `keybindings.json`:
-   - If it already contains an array of objects, add the object from `keybinding-sample.json` to that array.
-   - Otherwise, replace the empty file with the full JSON from `keybinding-sample.json`.
-
-## Install ScriptUploadToAIC
-
-1. Make the script executable:
-
-   ```sh
-   chmod 775 scriptUploadToAIC
-   ```
-
-2. Create the script folders:
-   - **Default folder structure:** run and then copy the created folder structure to your preferred location:
+3. Change permissions on the install script and then execute from the command line
 
      ```sh
-     ./createFolders.sh
-     ```
+     chmod 775 installBinding.sh
+      ```
 
-   - **Custom folder structure:** Edit `folderMappings.json` and update the `"folder"` values to match your directory names. For example, to store Scripted Decision Node scripts in a folder called `SDNs`, find `"type": "Scripted Decision Node"` and change `"folder": "ScriptedDecision"` to `"folder": "SDNs"`.
+4. (Optional) Move the Scripts folder to a preferred location.
 
-3. (Optional) Set the `$WORKING_TENANT` environment variable in your shell profile to reduce prompting for a specific Frodo connection alias (do not set if you want to switch between tenants often). For zsh, add to `~/.zprofile`:
+5. (Optional) Set the `$WORKING_TENANT` environment variable in your shell profile to reduce prompting for a specific Frodo connection alias (do not set if you want to switch between tenants often). For zsh, add to `~/.zprofile`:
 
    ```sh
    export WORKING_TENANT=myTenant

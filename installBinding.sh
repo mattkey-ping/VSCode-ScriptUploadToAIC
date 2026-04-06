@@ -1,5 +1,5 @@
 #!/bin/bash
-# Name: createFolders.sh
+# Name: installBinding.sh
 # Version: 2026-04-30
 # Author: Matt Key, @mattkey-ping
 #
@@ -10,48 +10,85 @@
 # This sample code is not covered by any Ping Identity Service Level Agreements.
 # 
 # Description:
+#   simlink and modify keybinding.json into .vscode folder
 #   Create directories used by scriptImportToAIC in folderMappings.json
 #
 # Required Prerequisites:
 #   jq - brew install jq 
-#   chmod 775 createFolders.sh
 #
 # Usage:
-#   ./createFolders.sh 
+#   ./installBinding.sh
 #
 
-## get args
+TARGET_DIR="$HOME/Library/Application Support/Code/User"
+TARGET_FILE="$TARGET_DIR/keybindings.json"
+LINK_NAME="./keybindings.json"
+CONTENT='    {
+        "key": "cmd+u",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Upload script to AIC",
+        "when": "editorTextFocus"
+    }'
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+MAPPINGSFILE="$SCRIPT_DIR/folderMappings.json"
+
+if [[ ! -f "$MAPPINGSFILE" ]]; then
+    echo "Error: $MAPPINGSFILE not found."
+    exit 1
+fi
+
+if [ -f "./scriptUploadToAIC" ]; then
+    chmod 775 "./scriptUploadToAIC"
+fi
+
 if ! command -v jq &> /dev/null; then
     echo "Error: 'jq' is not installed - brew install jq"
     exit 1
 fi
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-mappingsFile="$script_dir/folderMappings.json"
 
-if [[ ! -f "$mappingsFile" ]]; then
-    echo "Error: $mappingsFile not found."
+if [ ! -d "$TARGET_DIR" ]; then
+    echo "Error: $TARGET_DIR not found - look for 'Application Support/Code/User' and modify TARGET_DIR variable in script."
     exit 1
 fi
 
-## read folderMappings.json
-grep -v "^//" "$mappingsFile" | jq -c '.[]' | while read -r property; do
+if [ ! -f "$TARGET_FILE" ]; then
+    touch "$TARGET_FILE"
+fi
+
+if [ ! -L "$LINK_NAME" ]; then
+    ln -s "$TARGET_FILE" "$LINK_NAME"
+fi
+
+## Create Keybindings file and add keybinding
+# Check if file is empty or just whitespace
+if [ ! -s "$TARGET_FILE" ] || [[ -z $(grep '[^[:space:]]' "$TARGET_FILE") ]]; then
+    # IF NOT copy full JSON array to file
+    printf "[\n%s\n]\n" "$CONTENT" > "$TARGET_FILE"
+else
+    # IF contains content, add object to array
+    if ! grep -q "Upload script to AIC" "$TARGET_FILE"; then
+        sed '$d' "$TARGET_FILE" > "$TARGET_FILE.tmp"
+        printf ",\n%s\n]\n" "$CONTENT" >> "$TARGET_FILE.tmp"
+        mv "$TARGET_FILE.tmp" "$TARGET_FILE"
+        echo "Keybinding added."
+    else
+        echo "Keybinding already exists."
+    fi
+fi
+
+## Create directories for scriptImportToAIC
+grep -v "^//" "$MAPPINGSFILE" | jq -c '.[]' | while read -r property; do
     folder=$(echo "$property" | jq -r '.folder')
     context=$(echo "$property" | jq -r '.context')
 
     if [[ -n "$folder" && -n "$context" ]]; then
-
-        ## group SAML folders
         if [[ "$context" == SAML2_* ]]; then
             folder="SAML/$folder"
-        ## group OAuth folders
         elif [[ "$context" == OAUTH2_* ]]; then
             folder="OAuth/$folder"
-        ## group OIDC folders
         elif [[ "$context" == OIDC_CLAIMS ]]; then
             folder="OIDC/Claims"
         fi
-
-        ## create directory for each object
         folder=Scripts/"$folder"
         if [[ ! -d "$folder" ]]; then
             mkdir -p "$folder"
