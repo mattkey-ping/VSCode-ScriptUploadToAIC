@@ -10,14 +10,14 @@
 # This sample code is not covered by any Ping Identity Service Level Agreements.
 # 
 # Description:
-#   Create directories used by scriptUploadToAIC in folderMappings.json
+#   Create directories used by scriptImportToAIC in folderMappings.json
 #
 # Required Prerequisites:
 #   jq - brew install jq 
 #   chmod 775 createFolders.sh
 #
 # Usage:
-#   ./createFolders.sh folderMappings.json
+#   ./createFolders.sh 
 #
 
 ## get args
@@ -25,14 +25,11 @@ if ! command -v jq &> /dev/null; then
     echo "Error: 'jq' is not installed - brew install jq"
     exit 1
 fi
-if [ -z "$1" ]; then
-    echo "Error: Missing folderMappings.json file"
-    echo "Usage: ./createFolders.sh folderMappings.json"
-    exit 1
-fi
-mappingsFile="$1"
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+mappingsFile="$script_dir/folderMappings.json"
+
 if [[ ! -f "$mappingsFile" ]]; then
-    echo "Error: File $mappingsFile not found."
+    echo "Error: $mappingsFile not found."
     exit 1
 fi
 
@@ -55,6 +52,7 @@ grep -v "^//" "$mappingsFile" | jq -c '.[]' | while read -r property; do
         fi
 
         ## create directory for each object
+        folder=Scripts/"$folder"
         if [[ ! -d "$folder" ]]; then
             mkdir -p "$folder"
             echo "Directory Created: $folder"
